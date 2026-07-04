@@ -73,7 +73,8 @@ RUN mise use -g \
 RUN mise exec -- npm install -g \
     prettier \
     @fsouza/prettierd \
-    eslint
+    eslint \
+    eslint_d
 
 # Tailwind LSP is nice-to-have; don't fail the whole build if it has issues
 RUN mise exec -- npm install -g @tailwindcss/language-server || true

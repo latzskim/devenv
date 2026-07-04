@@ -257,21 +257,28 @@ require("lazy").setup({
       {
         "<leader>f",
         function()
-          require("conform").format({ async = true, lsp_format = "fallback" })
+          require("conform").format({ async = true, lsp_format = "never" })
         end,
         desc = "Format buffer",
       },
     },
     opts = {
       notify_on_error = true,
+      format_on_save = function(bufnr)
+        if vim.bo[bufnr].buftype ~= "" or not vim.bo[bufnr].modifiable then
+          return
+        end
+        return { timeout_ms = 5000, lsp_format = "never" }
+      end,
       formatters_by_ft = {
         go = { "goimports", "gofmt" },
         rust = { "rustfmt" },
         python = { "ruff_fix", "ruff_format", stop_after_first = false },
-        javascript = { "prettierd", "prettier", stop_after_first = true },
-        typescript = { "prettierd", "prettier", stop_after_first = true },
-        javascriptreact = { "prettierd", "prettier", stop_after_first = true },
-        typescriptreact = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { "prettierd", "prettier", "eslint_d", stop_after_first = false },
+        typescript = { "prettierd", "prettier", "eslint_d", stop_after_first = false },
+        javascriptreact = { "prettierd", "prettier", "eslint_d", stop_after_first = false },
+        typescriptreact = { "prettierd", "prettier", "eslint_d", stop_after_first = false },
+        tsx = { "prettierd", "prettier", "eslint_d", stop_after_first = false },
         html = { "prettierd", "prettier", stop_after_first = true },
         css = { "prettierd", "prettier", stop_after_first = true },
         json = { "prettierd", "prettier", stop_after_first = true },
@@ -457,6 +464,19 @@ require("lazy").setup({
       })
 
       local capabilities = require("blink.cmp").get_lsp_capabilities()
+      local server_settings = {
+        eslint = {
+          settings = {
+            workingDirectory = { mode = "auto" },
+          },
+        },
+        ts_ls = {
+          settings = {
+            typescript = { format = { enable = false } },
+            javascript = { format = { enable = false } },
+          },
+        },
+      }
       local server_bins = {
         lua_ls = "lua-language-server",
         bashls = "bash-language-server",
@@ -475,7 +495,10 @@ require("lazy").setup({
         if bin and vim.fn.executable(bin) == 0 then
           return
         end
-        if pcall(vim.lsp.config, server, { capabilities = capabilities }) then
+        local cfg = vim.tbl_deep_extend("force", server_settings[server] or {}, {
+          capabilities = capabilities,
+        })
+        if pcall(vim.lsp.config, server, cfg) then
           pcall(vim.lsp.enable, server)
         end
       end
