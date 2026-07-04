@@ -106,6 +106,9 @@ RUN mise exec -- sh -c '\
 # Copy Neovim configuration (your personal config + added Go/Web plugins)
 COPY --chown=dev:dev config/nvim /home/dev/.config/nvim
 
+# Global npm defaults (min-release-age, etc.)
+COPY --chown=dev:dev config/npm/.npmrc /home/dev/.npmrc
+
 # Pre-install Lazy plugins + all Mason LSPs used by config/nvim/init.lua
 RUN nvim --headless -c 'Lazy! sync' -c 'qa!' || true
 RUN nvim --headless \

@@ -164,6 +164,18 @@ Your actual `devenv` container typically uses **~100–300 MB** while idle. To r
 
 Treesitter parsers install on demand per file type; language servers are baked into the image at build time.
 
+## npm defaults
+
+The image ships with a global `~/.npmrc` setting:
+
+```ini
+min-release-age=30
+```
+
+This rejects registry versions published less than **30 days** ago (npm 11+ supply-chain hardening). Versions already pinned in `package-lock.json` still install normally. To override for one command: `npm install --force`.
+
+Edit `config/npm/.npmrc` and rebuild to change the policy.
+
 ## Tips
 
 - Your full Neovim config (including rose-pine, telescope keymaps, etc.) is baked in.
@@ -182,6 +194,7 @@ Dockerfile           # The main image definition
 docker-compose.yml   # Example with postgres + volume setup
 bin/dev              # Super convenient launcher for any folder
 config/nvim/         # Your Neovim config (copied at build)
+config/npm/.npmrc    # Global npm defaults (min-release-age, etc.)
 README.md
 ```
 
