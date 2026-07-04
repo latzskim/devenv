@@ -1,0 +1,29 @@
+# Docker volumes / local runtime data
+devenv-home/
+pgdata/
+*-next/
+
+# Secrets / local env (use .env.example as template)
+.env
+.env.*
+!.env.example
+
+# Credentials
+*.pem
+*.key
+id_rsa
+id_ed25519
+credentials.json
+secrets.json
+*.secret
+
+# OS / editor
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Logs / temp
+*.log
+tmp/

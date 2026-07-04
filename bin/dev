@@ -1,0 +1,166 @@
+#!/usr/bin/env zsh
+#
+# dev - Launch your portable Docker developer environment
+#
+# Usage:
+#   dev                 # Open zsh shell with current dir mounted at /workspace
+#   dev nvim            # Directly open Neovim
+#   dev nvim .          # Open Neovim in current dir
+#   dev --build         # Force rebuild image then run
+#   dev --no-rm         # Keep container after exit (useful for long sessions)
+#
+# Multiple terminals: run `dev` again while one session is open — it attaches
+# to the same container (shared /workspace, npm processes, ports).
+#
+# Dev servers (npm run dev, etc.) run inside the container. Ports are published
+# to your Mac so http://localhost:3000 works in your browser.
+# Override: DEVENV_PORTS="3000 5173" or DEVENV_PORTS=none
+#
+# This makes it trivial to open ANY local repo on your Mac inside the full dev env.
+
+set -e
+
+IMAGE_NAME="devenv:latest"
+CONTAINER_NAME="devenv-$(basename "$(pwd)")"
+FORCE_BUILD=false
+REMOVE=true
+EXTRA_ARGS=()
+
+# Parse simple flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --build)
+      FORCE_BUILD=true
+      shift
+      ;;
+    --no-rm)
+      REMOVE=false
+      shift
+      ;;
+    *)
+      EXTRA_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Resolve the directory where this script lives (handles symlinks)
+SCRIPT_PATH=$(realpath "$0" 2>/dev/null || readlink -f "$0" 2>/dev/null || echo "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+DEVENV_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+
+# Ensure image exists (or force build)
+if $FORCE_BUILD || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+  echo "==> Building ${IMAGE_NAME} (this may take a few minutes first time)..."
+  docker build -t "$IMAGE_NAME" "$DEVENV_ROOT"
+fi
+
+# Determine if we want an interactive shell or direct command
+if [[ ${#EXTRA_ARGS[@]} -eq 0 ]]; then
+  # Default: interactive zsh
+  CMD=(zsh)
+else
+  CMD=("${EXTRA_ARGS[@]}")
+fi
+
+HOST_DIR="$(pwd)"
+CONTAINER_EXISTS=false
+CONTAINER_RUNNING=false
+if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+  CONTAINER_EXISTS=true
+  if [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" == "true" ]]; then
+    CONTAINER_RUNNING=true
+  fi
+fi
+
+attach_existing() {
+  echo "==> Attaching to existing dev environment ($CONTAINER_NAME)"
+  echo "    Host dir: $HOST_DIR"
+  echo "    Inside:   /workspace (shared with other windows)"
+  echo ""
+  exec docker exec -it "$CONTAINER_NAME" "${CMD[@]}"
+}
+
+if $CONTAINER_RUNNING; then
+  if $FORCE_BUILD; then
+    echo "==> Stopping existing container to use rebuilt image..."
+    docker rm -f "$CONTAINER_NAME" >/dev/null
+    CONTAINER_EXISTS=false
+    CONTAINER_RUNNING=false
+  else
+    existing_mount="$(
+      docker inspect -f '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}' "$CONTAINER_NAME"
+    )"
+    if [[ -n "$existing_mount" && "$existing_mount" != "$HOST_DIR" ]]; then
+      echo "Error: $CONTAINER_NAME is already running for:" >&2
+      echo "  $existing_mount" >&2
+      echo "Not:" >&2
+      echo "  $HOST_DIR" >&2
+      exit 1
+    fi
+    attach_existing
+  fi
+fi
+
+if $CONTAINER_EXISTS; then
+  if ! $REMOVE; then
+    echo "==> Restarting existing dev environment ($CONTAINER_NAME)"
+    docker start "$CONTAINER_NAME" >/dev/null
+    attach_existing
+  fi
+  docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+fi
+
+# Docker run flags
+RUN_FLAGS=(
+  --rm
+  -it
+  --entrypoint /usr/local/bin/devenv-entrypoint
+  --name "$CONTAINER_NAME"
+  -v "${DEVENV_ROOT}/bin/entrypoint.sh:/usr/local/bin/devenv-entrypoint:ro"
+  -v "${HOST_DIR}:/workspace"
+  # Keep Next.js/Turbopack cache inside Docker (avoids Mac path bugs + HMR loops)
+  -v "${CONTAINER_NAME}-next:/workspace/.next"
+  -w /workspace
+  -e TERM=xterm-256color
+  -e COLORTERM=truecolor
+  -e WATCHPACK_POLLING=true
+  -e CHOKIDAR_USEPOLLING=true
+)
+
+if ! $REMOVE; then
+  RUN_FLAGS=(${RUN_FLAGS:#--rm})
+fi
+
+# Publish dev-server ports to the Mac host (container localhost ≠ Mac localhost).
+# Without this, npm run dev is only reachable inside the container.
+# Note: 5000 is omitted — macOS AirPlay Receiver uses it by default.
+DEFAULT_PORTS=(3000 3001 4000 4173 5173 8000 8080)
+PORTS=()
+PUBLISHED_PORTS=()
+if [[ "${DEVENV_PORTS:-}" == "none" ]]; then
+  :
+elif [[ -n "${DEVENV_PORTS:-}" ]]; then
+  PORTS=(${=DEVENV_PORTS})
+else
+  PORTS=("${DEFAULT_PORTS[@]}")
+fi
+for port in "${PORTS[@]}"; do
+  if lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "    Warning: port ${port} already in use on Mac — skipping"
+    continue
+  fi
+  RUN_FLAGS+=(-p "${port}:${port}")
+  PUBLISHED_PORTS+=("$port")
+done
+
+echo "==> Starting dev environment"
+echo "    Host dir: $HOST_DIR"
+echo "    Inside:   /workspace"
+echo "    Image:    $IMAGE_NAME"
+if [[ ${#PUBLISHED_PORTS[@]} -gt 0 ]]; then
+  echo "    Ports:    ${PUBLISHED_PORTS[*]} → localhost (browser on your Mac)"
+fi
+echo ""
+
+exec docker run "${RUN_FLAGS[@]}" "$IMAGE_NAME" "${CMD[@]}"

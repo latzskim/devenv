@@ -1,0 +1,83 @@
+version: "3.8"
+
+# Example docker-compose for the portable dev environment.
+# Usage:
+#   cd /path/to/your-project
+#   docker compose -f /path/to/this/devenv/docker-compose.yml run --rm dev
+#
+# Or copy this file into your project and adjust the build context or use prebuilt image.
+#
+# To connect to the example postgres from inside Neovim:
+#   :DBUI
+#   Add new connection:
+#     Name: local-pg
+#     URL:  postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+#
+# From terminal inside container: usql 'postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres'
+# Or psql -h db -U postgres
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devenv:latest
+    container_name: devenv
+    working_dir: /workspace
+    volumes:
+      # Mount the current directory (your project) into the workspace
+      # When you `docker compose -f ... run`, run from your project folder
+      # and adjust path if needed, e.g. - ./:/workspace
+      - .:/workspace
+      # Persist tool caches / nvim state across runs (recommended)
+      - devenv-home:/home/dev
+    environment:
+      - TERM=xterm-256color
+      - COLORTERM=truecolor
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "4000:4000"
+      - "4173:4173"
+      - "5173:5173"
+      - "8000:8000"
+      - "8080:8080"
+    # Use host network for simplest "localhost" access on Linux hosts.
+    # On macOS/Windows Docker Desktop use host.docker.internal instead of localhost
+    # for reaching published ports on the host.
+    # network_mode: "host"   # uncomment on pure Linux if desired
+    stdin_open: true
+    tty: true
+    # If you want to reach other containers by name easily, declare networks below
+    # networks:
+    #   - devnet
+
+  # Example database you can spin up together with the dev container.
+  # Start with: docker compose -f ... up -d db
+  # Then use the dev service with --network or same compose file.
+  db:
+    image: postgres:16-alpine
+    container_name: devenv-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # networks:
+    #   - devnet
+
+volumes:
+  devenv-home:
+    driver: local
+  pgdata:
+    driver: local
+
+# networks:
+#   devnet:
+#     driver: bridge

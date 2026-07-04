@@ -1,0 +1,13 @@
+# Ignore things that bloat the build context
+.git
+.gitignore
+*.md
+!README.md
+.DS_Store
+node_modules
+dist
+build
+__pycache__
+*.log
+devenv-home
+pgdata
