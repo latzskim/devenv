@@ -162,12 +162,12 @@ Your actual `devenv` container typically uses **~100–300 MB** while idle. To r
 2. Stop unused containers: `docker container prune`
 3. Rebuild after optimizations: `dev --build`
 
-The image was trimmed to avoid baking in every LSP and treesitter parser up front — heavy tools (pyright, rust-analyzer, etc.) install on first use inside Neovim.
+Treesitter parsers install on demand per file type; language servers are baked into the image at build time.
 
 ## Tips
 
 - Your full Neovim config (including rose-pine, telescope keymaps, etc.) is baked in.
-- Core Mason LSPs are pre-installed during the Docker build; others install on first Neovim launch.
+- All Mason LSPs used by the config are pre-installed during the Docker build.
 - To edit your Neovim config live: either rebuild after changes to `config/nvim`, or temporarily mount:
   ```bash
   docker run ... -v "$HOME/.config/nvim:/home/dev/.config/nvim" ...

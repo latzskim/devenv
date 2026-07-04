@@ -434,7 +434,7 @@ require("lazy").setup({
         end,
       })
 
-      -- Core LSPs are baked into the image; the rest Mason installs on first launch
+      -- All LSPs are pre-installed via Mason during the Docker image build
       local servers = {
         "lua_ls",
         "ts_ls",

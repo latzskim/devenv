@@ -105,11 +105,44 @@ RUN mise exec -- sh -c '\
 # Copy Neovim configuration (your personal config + added Go/Web plugins)
 COPY --chown=dev:dev config/nvim /home/dev/.config/nvim
 
-# Pre-install Lazy plugins + core Mason LSPs (heavy/optional LSPs install on first use)
+# Pre-install Lazy plugins + all Mason LSPs used by config/nvim/init.lua
 RUN nvim --headless -c 'Lazy! sync' -c 'qa!' || true
 RUN nvim --headless \
-    -c 'MasonInstall --force lua-language-server typescript-language-server eslint-lsp gopls' \
+    -c 'MasonInstall --force \
+      lua-language-server \
+      typescript-language-server \
+      eslint-lsp \
+      gopls \
+      bash-language-server \
+      pyright \
+      rust-analyzer \
+      html-lsp \
+      css-lsp \
+      json-lsp' \
     -c 'qa!' || true
+
+# Fail the build if any expected language server binary is missing
+RUN export PATH="/home/dev/.local/share/nvim/mason/bin:$PATH" && \
+    MISSING="" && \
+    for bin in \
+      lua-language-server \
+      typescript-language-server \
+      vscode-eslint-language-server \
+      gopls \
+      bash-language-server \
+      pyright-langserver \
+      rust-analyzer \
+      vscode-html-language-server \
+      vscode-css-language-server \
+      vscode-json-language-server; do \
+      if ! command -v "$bin" >/dev/null 2>&1; then \
+        MISSING="$MISSING $bin"; \
+      fi; \
+    done && \
+    if [ -n "$MISSING" ]; then \
+      echo "Missing Mason LSP binaries:$MISSING" >&2; \
+      exit 1; \
+    fi
 
 # Drop build caches — they bloat the image but aren't needed at runtime
 RUN mise exec -- npm cache clean --force && \
