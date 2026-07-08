@@ -68,6 +68,9 @@ RUN mise use -g \
     usql@latest \
     starship@latest
 
+# Global npm defaults (min-release-age, etc.)
+COPY --chown=dev:dev config/npm/.npmrc /home/dev/.npmrc
+
 # Global Node CLIs for formatting/linting (LSPs come from Mason, not duplicated here)
 # Note: prettierd package on npm is @fsouza/prettierd (provides the `prettierd` binary)
 RUN mise exec -- npm install -g \
@@ -106,12 +109,12 @@ RUN mise exec -- sh -c '\
 # Copy Neovim configuration (your personal config + added Go/Web plugins)
 COPY --chown=dev:dev config/nvim /home/dev/.config/nvim
 
-# Global npm defaults (min-release-age, etc.)
-COPY --chown=dev:dev config/npm/.npmrc /home/dev/.npmrc
+# Neovim plugins will utilize the copied /home/dev/.npmrc for Mason installations
 
 # Pre-install Lazy plugins + all Mason LSPs used by config/nvim/init.lua
 RUN nvim --headless -c 'Lazy! sync' -c 'qa!' || true
-RUN nvim --headless \
+RUN mv /home/dev/.npmrc /home/dev/.npmrc.bak && \
+    (nvim --headless \
     -c 'MasonInstall --force \
       lua-language-server \
       typescript-language-server \
@@ -123,7 +126,8 @@ RUN nvim --headless \
       html-lsp \
       css-lsp \
       json-lsp' \
-    -c 'qa!' || true
+    -c 'qa!' || true) && \
+    mv /home/dev/.npmrc.bak /home/dev/.npmrc
 
 # Fail the build if any expected language server binary is missing
 RUN export PATH="/home/dev/.local/share/nvim/mason/bin:$PATH" && \

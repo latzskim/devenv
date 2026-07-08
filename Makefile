@@ -6,8 +6,8 @@ build:
 	docker build -t $(IMAGE) .
 
 # Common dev-server ports published to the Mac host
-DEV_PORTS := -p 3000:3000 -p 3001:3001 -p 4000:4000 -p 4173:4173 \
-             -p 5173:5173 -p 8000:8000 -p 8080:8080
+DEV_PORTS := -p 127.0.0.1:3000:3000 -p 127.0.0.1:3001:3001 -p 127.0.0.1:4000:4000 -p 127.0.0.1:4173:4173 \
+             -p 127.0.0.1:5173:5173 -p 127.0.0.1:8000:8000 -p 127.0.0.1:8080:8080
 
 # Run the container with current directory mounted (ephemeral)
 run:
