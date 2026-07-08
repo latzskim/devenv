@@ -49,6 +49,43 @@ SCRIPT_PATH=$(realpath "$0" 2>/dev/null || readlink -f "$0" 2>/dev/null || echo 
 SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
 DEVENV_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 
+# Load local .env if it exists
+ENV_FILE="$DEVENV_ROOT/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  source "$ENV_FILE" 2>/dev/null || true
+  set +a
+fi
+
+# Run setup wizard if running for the first time, ~/.netrc exists, and stdin is a TTY
+if [[ -f "$HOME/.netrc" ]] && [[ -z "${MOUNT_NETRC:-}" ]] && [[ -t 0 ]]; then
+  echo "==> Setup Wizard: ~/.netrc file detected on host."
+  echo "    Would you like to mount your host's ~/.netrc into the container?"
+  echo "    This enables gitlab/github credential helpers and API keys."
+  echo -n "    Mount ~/.netrc? [y/N]: "
+  read -r response
+  if [[ "$response" =~ ^[Yy]$ ]]; then
+    MOUNT_NETRC="true"
+  else
+    MOUNT_NETRC="false"
+  fi
+  
+  # Save the preference to .env
+  if [[ ! -f "$ENV_FILE" ]]; then
+    if [[ -f "$DEVENV_ROOT/.env.example" ]]; then
+      cp "$DEVENV_ROOT/.env.example" "$ENV_FILE"
+    else
+      touch "$ENV_FILE"
+    fi
+  fi
+  # Ensure newline at end of .env before appending
+  [[ -n "$(tail -c 1 "$ENV_FILE" 2>/dev/null)" ]] && echo "" >> "$ENV_FILE"
+  echo "# Mount host ~/.netrc credentials into the container" >> "$ENV_FILE"
+  echo "MOUNT_NETRC=$MOUNT_NETRC" >> "$ENV_FILE"
+  echo "==> Choice saved to .env (MOUNT_NETRC=$MOUNT_NETRC)"
+  echo ""
+fi
+
 # Ensure image exists (or force build)
 if $FORCE_BUILD || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
   echo "==> Building ${IMAGE_NAME} (this may take a few minutes first time)..."
@@ -128,7 +165,7 @@ RUN_FLAGS=(
   -e CHOKIDAR_USEPOLLING=true
 )
 
-if [[ -f "$HOME/.netrc" ]]; then
+if [[ -f "$HOME/.netrc" ]] && [[ "${MOUNT_NETRC:-}" == "true" ]]; then
   RUN_FLAGS+=(-v "$HOME/.netrc:/home/dev/.netrc:ro")
 fi
 
