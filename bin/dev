@@ -158,6 +158,10 @@ RUN_FLAGS=(
   -v "${HOST_DIR}:/workspace"
   # Keep Next.js/Turbopack cache inside Docker (avoids Mac path bugs + HMR loops)
   -v "${CONTAINER_NAME}-next:/workspace/.next"
+  # Persist home directory (Go modules, caches, shell history, Mason LSPs)
+  -v "devenv-home:/home/dev"
+  # Bind-mount Neovim configuration for instant host updates
+  -v "${DEVENV_ROOT}/config/nvim:/home/dev/.config/nvim:ro"
   -w /workspace
   -e TERM=xterm-256color
   -e COLORTERM=truecolor
