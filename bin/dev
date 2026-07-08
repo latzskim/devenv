@@ -128,6 +128,10 @@ RUN_FLAGS=(
   -e CHOKIDAR_USEPOLLING=true
 )
 
+if [[ -f "$HOME/.netrc" ]]; then
+  RUN_FLAGS+=(-v "$HOME/.netrc:/home/dev/.netrc:ro")
+fi
+
 if ! $REMOVE; then
   RUN_FLAGS=(${RUN_FLAGS:#--rm})
 fi

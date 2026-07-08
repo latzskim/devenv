@@ -2,6 +2,8 @@
 
 IMAGE := devenv:latest
 
+NETRC_MOUNT := $(shell [ -f $(HOME)/.netrc ] && echo "-v $(HOME)/.netrc:/home/dev/.netrc:ro")
+
 build:
 	docker build -t $(IMAGE) .
 
@@ -13,6 +15,7 @@ DEV_PORTS := -p 127.0.0.1:3000:3000 -p 127.0.0.1:3001:3001 -p 127.0.0.1:4000:400
 run:
 	docker run --rm -it \
 		$(DEV_PORTS) \
+		$(NETRC_MOUNT) \
 		-v "$$(pwd):/workspace" \
 		-w /workspace \
 		-e TERM=xterm-256color \
@@ -22,6 +25,7 @@ run:
 nvim:
 	docker run --rm -it \
 		$(DEV_PORTS) \
+		$(NETRC_MOUNT) \
 		-v "$$(pwd):/workspace" \
 		-w /workspace \
 		-e TERM=xterm-256color \

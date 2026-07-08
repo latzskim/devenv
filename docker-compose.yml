@@ -31,6 +31,8 @@ services:
       - .:/workspace
       # Persist tool caches / nvim state across runs (recommended)
       - devenv-home:/home/dev
+      # Uncomment to link ~/.netrc from host for gitlab/github credentials
+      # - ~/.netrc:/home/dev/.netrc:ro
     environment:
       - TERM=xterm-256color
       - COLORTERM=truecolor
