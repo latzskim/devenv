@@ -10,6 +10,18 @@ vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.wrap = false
 vim.opt.scrolloff = 8
+vim.g.clipboard = {
+  name = 'OSC 52',
+  copy = {
+    ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
+    ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+  },
+  paste = {
+    ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
+    ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+  },
+}
+vim.opt.clipboard = "unnamedplus"
 
 vim.keymap.set("n", "<C-h>", "<C-w>h", { desc = "Move to left window" })
 vim.keymap.set("n", "<C-j>", "<C-w>j", { desc = "Move to below window" })
@@ -305,26 +317,7 @@ require("lazy").setup({
       vim.g.db_ui_tmp_query_location = "/tmp/dadbod_queries"
     end,
   },
-  -- Popular for Go development
-  {
-    "olexsmir/gopher.nvim",
-    ft = { "go", "gomod", "gowork", "gotmpl" },
-    dependencies = { "nvim-lua/plenary.nvim" },
-    config = function()
-      require("gopher").setup({
-        commands = {
-          go = "go",
-          gomodifytags = "gomodifytags",
-          impl = "impl",
-        },
-      })
-    end,
-    keys = {
-      { "<leader>gsj", "<cmd>GoTagAdd json<cr>", desc = "Add json struct tags (Go)" },
-      { "<leader>gsy", "<cmd>GoTagAdd yaml<cr>", desc = "Add yaml struct tags (Go)" },
-      { "<leader>gse", "<cmd>GoIfErr<cr>", desc = "Add if err (Go)" },
-    },
-  },
+
   {
     "windwp/nvim-ts-autotag",
     event = { "BufReadPre", "BufNewFile" },
