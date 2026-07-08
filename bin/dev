@@ -128,7 +128,9 @@ if $CONTAINER_RUNNING; then
     existing_mount="$(
       docker inspect -f '{{range .Mounts}}{{if eq .Destination "/workspace"}}{{.Source}}{{end}}{{end}}' "$CONTAINER_NAME"
     )"
-    if [[ -n "$existing_mount" && "$existing_mount" != "$HOST_DIR" ]]; then
+    existing_normalized="${existing_mount#/host_mnt}"
+    host_normalized="${HOST_DIR#/host_mnt}"
+    if [[ -n "$existing_mount" && "$existing_normalized" != "$host_normalized" ]]; then
       echo "Error: $CONTAINER_NAME is already running for:" >&2
       echo "  $existing_mount" >&2
       echo "Not:" >&2
