@@ -148,7 +148,13 @@ require("lazy").setup({
   },
   {
     "nvim-telescope/telescope.nvim",
-    dependencies = { "nvim-lua/plenary.nvim" },
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      {
+        "nvim-telescope/telescope-fzf-native.nvim",
+        build = "make",
+      },
+    },
     opts = {
       defaults = {
         layout_strategy = "horizontal",
@@ -158,7 +164,20 @@ require("lazy").setup({
         find_files = { previewer = true },
         live_grep = { previewer = true },
       },
+      extensions = {
+        fzf = {
+          fuzzy = true,
+          override_generic_sorter = true,
+          override_file_sorter = true,
+          case_mode = "smart_case",
+        },
+      },
     },
+    config = function(_, opts)
+      local telescope = require("telescope")
+      telescope.setup(opts)
+      pcall(telescope.load_extension, "fzf")
+    end,
     keys = {
       { "<leader>sf", function() require("telescope.builtin").find_files() end, desc = "Search files" },
       { "<leader>sg", function() require("telescope.builtin").live_grep() end, desc = "Search by grep" },
