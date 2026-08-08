@@ -159,6 +159,39 @@ require("lazy").setup({
       defaults = {
         layout_strategy = "horizontal",
         layout_config = { preview_width = 0.55 },
+        file_ignore_patterns = {
+          -- VCS / deps
+          "%.git/",
+          "node_modules/",
+          -- Lockfiles
+          "package%-lock%.json",
+          "yarn%.lock",
+          "pnpm%-lock%.yaml",
+          "bun%.lockb?",
+          "npm%-shrinkwrap%.json",
+          -- JS/TS/Node/Next build + cache output
+          "%.next/",
+          "%.nuxt/",
+          "%.turbo/",
+          "%.vercel/",
+          "%.cache/",
+          "%.parcel%-cache/",
+          "%.vite/",
+          "%.svelte%-kit/",
+          "dist/",
+          "build/",
+          "out/",
+          "coverage/",
+          "storybook%-static/",
+          "%.yarn/",
+          -- Generated / minified noise
+          "%.min%.js$",
+          "%.min%.css$",
+          "%.map$",
+          "%.svg$",
+          "tsconfig%.tsbuildinfo",
+          "next%-env%.d%.ts",
+        },
       },
       pickers = {
         find_files = { previewer = true },
