@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Dev environment Docker image
 # Tools: Latest Neovim, Go, Node.js, Python, TypeScript 7 (or latest), SQL client + linters
+# AI agents: opencode, Grok Build (`grok`), Antigravity CLI (`agy`)
 # Pre-configured with your Neovim setup + popular Go + Web/TS plugins
 
 FROM ubuntu:24.04
@@ -88,6 +89,21 @@ RUN mise exec -- npm install -g typescript@7.0 || mise exec -- npm install -g ty
 # tree-sitter CLI is required by nvim-treesitter (main) to build some parsers (e.g. javascript, tsx, etc.)
 RUN mise exec -- npm install -g tree-sitter-cli
 
+# AI coding agent CLIs: opencode, Grok Build (xAI), Antigravity (Google)
+# Installed concurrently (network-bound); each targets its own path, no conflicts.
+# opencode: force the binary into ~/.local/bin (already on PATH) instead of ~/.opencode/bin
+# Grok Build: npm route avoids the Cloudflare-walled x.ai host (installs the `grok` binary)
+RUN set -eu; \
+    export XDG_BIN_DIR="$HOME/.local/bin"; \
+    curl -fsSL https://opencode.ai/install | bash & p_opencode=$!; \
+    mise exec -- npm install -g @xai-official/grok & p_grok=$!; \
+    curl -fsSL https://antigravity.google/cli/install.sh | bash & p_agy=$!; \
+    rc=0; \
+    wait "$p_opencode" || rc=1; \
+    wait "$p_grok" || rc=1; \
+    wait "$p_agy" || rc=1; \
+    [ "$rc" -eq 0 ]
+
 # Go helpers for gopher.nvim (gopls itself is installed via Mason)
 RUN mise exec -- sh -c '\
     mkdir -p "$HOME/.local/bin" && \
@@ -149,6 +165,18 @@ RUN export PATH="/home/dev/.local/share/nvim/mason/bin:$PATH" && \
     done && \
     if [ -n "$MISSING" ]; then \
       echo "Missing Mason LSP binaries:$MISSING" >&2; \
+      exit 1; \
+    fi
+
+# Fail the build if any AI agent CLI is missing
+RUN MISSING="" && \
+    for bin in opencode grok agy; do \
+      if ! command -v "$bin" >/dev/null 2>&1; then \
+        MISSING="$MISSING $bin"; \
+      fi; \
+    done && \
+    if [ -n "$MISSING" ]; then \
+      echo "Missing AI agent CLIs:$MISSING" >&2; \
       exit 1; \
     fi
 
@@ -272,4 +300,4 @@ CMD ["zsh"]
 
 # Helpful labels
 LABEL org.opencontainers.image.title="devenv"
-LABEL org.opencontainers.image.description="Portable developer environment: Neovim + Go + Node + Python + TS + SQL"
+LABEL org.opencontainers.image.description="Portable developer environment: Neovim + Go + Node + Python + TS + SQL + AI agent CLIs (opencode, grok, agy)"
