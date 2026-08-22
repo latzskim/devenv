@@ -58,7 +58,17 @@ A batteries-included Docker image that gives you a consistent, modern developer 
 
    **Multiple terminal windows**: run `dev` again while a session is already open — it attaches to the same container (shared files, dev servers, and ports). No second container, no duplicate port binding.
 
-   **Next.js / Turbopack in Docker**: always run `npm install` and `npm run dev` *inside* devenv, not on your Mac. If the page refresh-loops with Turbopack panics, delete the cache (`rm -rf .next`) and restart `npm run dev` in the container. The `dev` script stores `.next` in a Docker volume so Mac and container caches do not mix.
+   **Next.js / Turbopack in Docker**: always run `npm install` and `npm run dev` *inside* devenv, not on your Mac. The `dev` script stores both `.next` and `node_modules` in Docker volumes so Mac-native binaries (e.g. `lightningcss-darwin-*`) never leak into the Linux container. If CSS fails with `Cannot find module '../lightningcss.linux-*.node'`, recreate the container and reinstall deps inside it:
+
+   ```bash
+   docker rm -f devenv-$(basename "$PWD")
+   dev
+   # inside the container:
+   npm install
+   npm run dev
+   ```
+
+   If the page refresh-loops with Turbopack panics, delete the cache (`rm -rf .next`) and restart `npm run dev` in the container.
 
    - `nvim .` or just `nvim`
    - `go version`, `node --version`, `python --version`

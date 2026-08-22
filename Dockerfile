@@ -44,7 +44,7 @@ USER dev
 WORKDIR /home/dev
 
 ENV HOME=/home/dev
-ENV PATH="/home/dev/.local/bin:/home/dev/.local/share/mise/shims:${PATH}"
+ENV PATH="/home/dev/.local/bin:/home/dev/.opencode/bin:/home/dev/.local/share/mise/shims:${PATH}"
 
 # Install mise (tool version manager - handles latest versions cleanly)
 RUN curl https://mise.run | sh
@@ -91,10 +91,10 @@ RUN mise exec -- npm install -g tree-sitter-cli
 
 # AI coding agent CLIs: opencode, Grok Build (xAI), Antigravity (Google)
 # Installed concurrently (network-bound); each targets its own path, no conflicts.
-# opencode: force the binary into ~/.local/bin (already on PATH) instead of ~/.opencode/bin
+# opencode: installer places binary in ~/.opencode/bin; symlink into ~/.local/bin as well
 # Grok Build: npm route avoids the Cloudflare-walled x.ai host (installs the `grok` binary)
 RUN set -eu; \
-    export XDG_BIN_DIR="$HOME/.local/bin"; \
+    mkdir -p "$HOME/.local/bin"; \
     curl -fsSL https://opencode.ai/install | bash & p_opencode=$!; \
     mise exec -- npm install -g @xai-official/grok & p_grok=$!; \
     curl -fsSL https://antigravity.google/cli/install.sh | bash & p_agy=$!; \
@@ -102,7 +102,8 @@ RUN set -eu; \
     wait "$p_opencode" || rc=1; \
     wait "$p_grok" || rc=1; \
     wait "$p_agy" || rc=1; \
-    [ "$rc" -eq 0 ]
+    [ "$rc" -eq 0 ]; \
+    ln -sf "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode"
 
 # Go helpers for gopher.nvim (gopls itself is installed via Mason)
 RUN mise exec -- sh -c '\
@@ -215,7 +216,7 @@ alias lg='lazygit'
 alias db='nvim +DBUI'
 
 # Make sure local bins + mason + go tools are available
-export PATH="$HOME/.local/share/nvim/mason/bin:$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/share/nvim/mason/bin:$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 
 # History
 HISTSIZE=10000
@@ -236,7 +237,7 @@ eval "$(starship init bash)"
 
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
-export PATH="$HOME/.local/share/nvim/mason/bin:$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/share/nvim/mason/bin:$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 
 alias ll='ls -alF --color=auto'
 alias la='ls -A --color=auto'

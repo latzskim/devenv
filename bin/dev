@@ -160,6 +160,10 @@ RUN_FLAGS=(
   -v "${HOST_DIR}:/workspace"
   # Keep Next.js/Turbopack cache inside Docker (avoids Mac path bugs + HMR loops)
   -v "${CONTAINER_NAME}-next:/workspace/.next"
+  # Keep node_modules as a Linux volume. The bind mount above would otherwise
+  # expose Mac-native packages (lightningcss, better-sqlite3, etc.) and break
+  # Next/Tailwind with errors like "Cannot find module lightningcss.linux-*.node".
+  -v "${CONTAINER_NAME}-node_modules:/workspace/node_modules"
   # Persist home directory (Go modules, caches, shell history, Mason LSPs)
   -v "devenv-home:/home/dev"
   # Bind-mount Neovim configuration for instant host updates
